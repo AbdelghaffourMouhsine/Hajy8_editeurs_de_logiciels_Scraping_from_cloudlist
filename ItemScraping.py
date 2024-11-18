@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.keys import Keys
+import pandas as pd
 import time , random
 import os, re, json, copy
 import zipfile
@@ -223,9 +224,70 @@ class ItemScraping:
         else:
             print(editeurs_articles['data'])
     ########################################################################################################
+    def extract_more_info_for_editeurs(self, file_path='', storage_file_path='', storage_file_path_2=''):
+        itemStorage = ItemStorage(file_path = file_path)
+        editeurs_dict = itemStorage.get_list_of_dicts()
     
+        editeurs = []
+        info_names = []
+        for editeur_dict in editeurs_dict:
+            editeur = EditeurLogiciels()
+            editeur.init_from_dict(editeur_dict)
+            self.driver.get(editeur.more_inf_url)
+            
+            description = self.get_element('//div[@class="w2dc-field-content w2dc-field-description"]')
+            if description['status']:
+                description = description['data']
+                editeur.description = description.get_attribute('innerText')
+                
+                print(description.get_attribute('innerText'))
+            else:
+                print(description['data'])
+    
+            infos = self.get_element('//div[@id="w2dc-fields-group-1"]/div', group=True)
+            if infos['status']:
+                infos = infos['data']
+                for i, info in enumerate(infos):
+                    if i>0:                        # le premier element contient juste le mot : COORDONNÉES
+                        spans_info = self.get_element('span', group=True, from_elem=info)['data']
+                        if len(spans_info) >= 2:
+                            info_name = spans_info[0].get_attribute('innerText')
+                            info_value = spans_info[1].get_attribute('innerText')
+                            info_names.append(info_name)
+                            
+                            if str(info_name).lower().strip() == 'téléphone:':
+                                if not editeur.tele or str(editeur.tele) == 'nan' :
+                                    editeur.tele = [info_value.strip()]
+                                else:
+                                    if str(editeur.tele).strip() == info_value.strip():
+                                        editeur.tele = [info_value.strip()]
+                                    else:
+                                        editeur.tele = [str(editeur.tele).strip(), info_value.strip()]
+                                        
+                            if str(info_name).lower().strip() == 'site web:':
+                                editeur.web_site_url = info_value.strip()
+                                
+                            if str(info_name).lower().strip() == 'email:':
+                                editeur.email = info_value.strip()
+                                
+                            print(f'{info_name} ==> {info_value}')
+                        else:
+                            print('no len(spans_info) >= 2')
+            else:
+                print(infos['data'])
+    
+            print(editeur.more_inf_url)
+            print(f'*'*150)
+    
+            ItemStorage(file_path=storage_file_path, value=editeur)
+            editeurs.append(editeur)
+            time.sleep(1)
+            
+        ItemStorage(file_path=storage_file_path_2, value=editeurs)
+        return list(set(info_names))
     ########################################################################################################
 
+    ########################################################################################################
     # def get_linkedin_authentication(self, email = 'abdelghaffourmh@gmail.com', pwd = 'abdo12345'):
         
     #     url = 'https://www.linkedin.com/login/fr?fromSignIn=true&trk=guest_homepage-basic_nav-header-signin'

@@ -5,7 +5,7 @@ class ItemStorage:
     def __init__(self, file_path=None, value=None):
         self.file_path = file_path
         
-        self.columns = ['index', 'name', 'tele', 'address', 'more_inf_url', 'email', 'web_site_url']
+        self.columns = ['index', 'name', 'tele', 'address', 'more_inf_url', 'email', 'web_site_url', 'description', 'tags', 'contact', 'commercial_name', 'nos_domaines']
         
          # Create the DataFrame with 'columns' if the file doesn't exist
         if not os.path.isfile(self.file_path):
