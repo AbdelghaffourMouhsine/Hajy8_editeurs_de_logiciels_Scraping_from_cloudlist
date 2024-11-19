@@ -185,7 +185,7 @@ class ItemScraping:
 
             last_height = new_height
     ########################################################################################################
-    def extract_editeur_de_logiciels_from_article(self, article):
+    def extract_editeur_de_logiciels_from_cloudlist_from_article(self, article):
         dict = {}
         a_elem = self.get_element('div[2]/header/h2/a', from_elem=article)
         if a_elem['status']:
@@ -205,7 +205,7 @@ class ItemScraping:
         
         return dict
 
-    def extract_editeurs_de_logiciels(self, storage_file_path=None):
+    def extract_editeurs_de_logiciels_from_cloudlist(self, storage_file_path=None):
 
         editeurs_articles = self.get_element('//div[@class="w2dc-listings-block-content"]/article', group=True)
         if editeurs_articles['status'] :
@@ -213,7 +213,7 @@ class ItemScraping:
             print(len(editeurs_articles))
             editeurs = []
             for i, article in enumerate(editeurs_articles):
-                editeur_dict = self.extract_editeur_de_logiciels_from_article(article)
+                editeur_dict = self.extract_editeur_de_logiciels_from_cloudlist_from_article(article)
                 editeur_dict['index'] = i
                 editeur = EditeurLogiciels()
                 editeur.init_from_dict(editeur_dict)
@@ -224,7 +224,7 @@ class ItemScraping:
         else:
             print(editeurs_articles['data'])
     ########################################################################################################
-    def extract_more_info_for_editeurs(self, file_path='', storage_file_path='', storage_file_path_2=''):
+    def extract_more_info_for_editeurs_from_cloudlist(self, file_path='', storage_file_path='', storage_file_path_2=''):
         itemStorage = ItemStorage(file_path = file_path)
         editeurs_dict = itemStorage.get_list_of_dicts()
     
@@ -286,7 +286,73 @@ class ItemScraping:
         ItemStorage(file_path=storage_file_path_2, value=editeurs)
         return list(set(info_names))
     ########################################################################################################
+    def extract_editeur_de_logiciels_from_archimag_from_div(self, div_elem):
+        dict = {}
+        a_elem = self.get_element('div/div[2]/h2/a', from_elem=div_elem)
+        if a_elem['status'] :
+            a_elem = a_elem['data']
+            dict['name'] = a_elem.get_attribute('innerText')
+            dict['more_inf_url'] = a_elem.get_attribute('href')
+        else:
+            print(a_elem['data'])
 
+    
+        tags_elems = self.get_element('div/div[2]/ul[2]/li', from_elem=div_elem, group=True)
+        if tags_elems['status'] :
+            tags_elems = tags_elems['data']
+            tags = [tag_elem.get_attribute('innerText') for tag_elem in tags_elems]
+        else:
+            print(tags_elems['data'])
+
+        tags_elems = self.get_element('div/div[2]/ul[3]/li', from_elem=div_elem, group=True)
+        if tags_elems['status'] :
+            tags_elems = tags_elems['data']
+            tags = tags + [tag_elem.get_attribute('innerText') for tag_elem in tags_elems]
+            dict['tags'] = ',,  '.join(tags)
+        else:
+            print(tags_elems['data'])
+            
+        description_elem = self.get_element('div/div[2]', from_elem=div_elem)
+        if description_elem['status'] :
+            description_elem = description_elem['data']
+            dict['description'] = description_elem.text
+        else:
+            print(description_elem['data'])
+        
+        return dict
+
+    def extract_editeurs_de_logiciels_from_archimag(self, storage_file_path=None):
+        editeurs_divs_1 = self.get_element('//*[@id="block-system-main"]/div/div/div[1]/div/div/div', group=True)
+        editeurs = []
+        if editeurs_divs_1['status'] :
+            editeurs_divs_1 = editeurs_divs_1['data']
+            print(len(editeurs_divs_1))
+            for editeur_div_1 in editeurs_divs_1:
+                editeur = EditeurLogiciels()
+                dict = self.extract_editeur_de_logiciels_from_archimag_from_div(editeur_div_1)
+                editeur.init_from_dict(dict)
+                editeurs.append(editeur)
+                print(editeur)
+        else:
+            print(editeurs_divs_1['data'])
+            
+        print(f'*'*150)
+        editeurs_divs_2 = self.get_element('//*[@id="block-system-main"]/div/div/div[2]/div', group=True)
+        if editeurs_divs_2['status'] :
+            editeurs_divs_2 = editeurs_divs_2['data']
+            print(len(editeurs_divs_2))
+            for editeur_div_2 in editeurs_divs_2:
+                editeur = EditeurLogiciels()
+                dict = self.extract_editeur_de_logiciels_from_archimag_from_div(editeur_div_2)
+                editeur.init_from_dict(dict)
+                editeurs.append(editeur)
+                print(editeur)
+        else:
+            print(editeurs_divs_2['data'])
+
+        if storage_file_path:
+            ItemStorage(file_path=storage_file_path, value=editeurs)
+            
     ########################################################################################################
     # def get_linkedin_authentication(self, email = 'abdelghaffourmh@gmail.com', pwd = 'abdo12345'):
         
