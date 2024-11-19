@@ -234,6 +234,7 @@ class ItemScraping:
             editeur = EditeurLogiciels()
             editeur.init_from_dict(editeur_dict)
             self.driver.get(editeur.more_inf_url)
+            time.sleep(2)
             
             description = self.get_element('//div[@class="w2dc-field-content w2dc-field-description"]')
             if description['status']:
@@ -275,7 +276,20 @@ class ItemScraping:
                             print('no len(spans_info) >= 2')
             else:
                 print(infos['data'])
-    
+
+            tags_elems = self.get_element('//span[@class="w2dc-field-content"]/a[@rel="tag"]', group=True)
+            if tags_elems['status']:
+                tags_elems = tags_elems['data']
+                editeur.tags = ',, '.join([tag_elem.get_attribute('innerText') for tag_elem in tags_elems])
+
+            
+            address_elem = self.get_element('//address')
+            if address_elem['status']:
+                address_elem = address_elem['data']
+                if address_elem.get_attribute('innerText').strip() != '' :
+                    editeur.address = address_elem.get_attribute('innerText').strip()
+                    print(f'Address ==> {editeur.address}')
+            
             print(editeur.more_inf_url)
             print(f'*'*150)
     
@@ -353,6 +367,66 @@ class ItemScraping:
         if storage_file_path:
             ItemStorage(file_path=storage_file_path, value=editeurs)
             
+    ########################################################################################################
+    def extract_more_info_for_editeurs_from_archimag(self, file_path='', storage_file_path='', storage_file_path_2=''):
+        itemStorage = ItemStorage(file_path = file_path)
+        editeurs_dict = itemStorage.get_list_of_dicts()
+    
+        editeurs = []
+        info_names = []
+        for i, editeur_dict in enumerate(editeurs_dict):
+            editeur = EditeurLogiciels()
+            editeur.init_from_dict(editeur_dict)
+            editeur.index = i
+            self.driver.get(editeur.more_inf_url)
+            
+            contact_elem = self.get_element('//article[@class="node node-societe"]/div[2]/div[1]/div/div[3]/div[1]')
+            if contact_elem['status']:
+                contact_elem = contact_elem['data']
+                editeur.contact = contact_elem.get_attribute('innerText')
+            else:
+                print(contact_elem['data'])
+
+            contact_commercial_elem = self.get_element('//article[@class="node node-societe"]/div[2]/div[1]/div/div[3]/div[2]')
+            if contact_commercial_elem['status']:
+                contact_commercial_elem = contact_commercial_elem['data']
+                editeur.commercial_name = contact_commercial_elem.get_attribute('innerText')
+            else:
+                print(contact_commercial_elem['data'])
+
+            nos_domaines_elem = self.get_element('//article[@class="node node-societe"]/div[2]/div[1]/div/div[3]/div[3]')
+            if nos_domaines_elem['status']:
+                nos_domaines_elem = nos_domaines_elem['data']
+                editeur.nos_domaines = nos_domaines_elem.get_attribute('innerText')
+            else:
+                print(nos_domaines_elem['data'])
+            
+            description_elem = self.get_element('//article[@class="node node-societe"]/div[2]/div[1]/div/div[2]/div[2]/div/div/div')
+            if description_elem['status']:
+                description_elem = description_elem['data']
+                editeur.description = description_elem.get_attribute('innerText')
+            else:
+                print(nos_domaines_elem['data'])
+                
+            print(editeur.contact)
+            print(f'*'*20)
+            print(editeur.commercial_name)
+            print(f'*'*20)
+            print(editeur.nos_domaines)
+            print(f'*'*20)
+            print(editeur.description)
+            print(f'*'*20)
+            print(editeur.more_inf_url)
+            print(f'*'*150)
+            
+            if storage_file_path:
+                ItemStorage(file_path=storage_file_path, value=editeur)
+                editeurs.append(editeur)
+                time.sleep(1)
+        if storage_file_path_2 :
+            ItemStorage(file_path=storage_file_path_2, value=editeurs)
+            
+        return list(set(info_names))
     ########################################################################################################
     # def get_linkedin_authentication(self, email = 'abdelghaffourmh@gmail.com', pwd = 'abdo12345'):
         

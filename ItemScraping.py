@@ -234,6 +234,7 @@ class ItemScraping:
             editeur = EditeurLogiciels()
             editeur.init_from_dict(editeur_dict)
             self.driver.get(editeur.more_inf_url)
+            time.sleep(2)
             
             description = self.get_element('//div[@class="w2dc-field-content w2dc-field-description"]')
             if description['status']:
@@ -275,7 +276,20 @@ class ItemScraping:
                             print('no len(spans_info) >= 2')
             else:
                 print(infos['data'])
-    
+
+            tags_elems = self.get_element('//span[@class="w2dc-field-content"]/a[@rel="tag"]', group=True)
+            if tags_elems['status']:
+                tags_elems = tags_elems['data']
+                editeur.tags = ',, '.join([tag_elem.get_attribute('innerText') for tag_elem in tags_elems])
+
+            
+            address_elem = self.get_element('//address')
+            if address_elem['status']:
+                address_elem = address_elem['data']
+                if address_elem.get_attribute('innerText').strip() != '' :
+                    editeur.address = address_elem.get_attribute('innerText').strip()
+                    print(f'Address ==> {editeur.address}')
+            
             print(editeur.more_inf_url)
             print(f'*'*150)
     
