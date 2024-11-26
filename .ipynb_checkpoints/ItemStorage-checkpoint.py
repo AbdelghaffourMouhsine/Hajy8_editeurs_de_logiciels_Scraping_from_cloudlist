@@ -7,7 +7,7 @@ class ItemStorage:
         _, extension = os.path.splitext(self.file_path)
         self.extension = extension
         
-        self.columns = value.attributes if value else itemClassName.attributes if itemClassName else None
+        self.columns = value.attributes if value and type(value) != list else value[0].attributes if value and type(value) == list else itemClassName.attributes if itemClassName else None
         
          # Create the DataFrame with 'columns' if the file doesn't exist
         if not os.path.isfile(self.file_path) and self.columns:
@@ -31,6 +31,8 @@ class ItemStorage:
                 self.insert_item(value)
                 
     def save_data(self):
+        _, extension = os.path.splitext(self.file_path)
+        self.extension = extension
         if self.extension == '.csv':
             self.data.to_csv(self.file_path, index=False, encoding='utf-8-sig')
         elif self.extension == '.xlsx':

@@ -113,12 +113,14 @@ class LinkedinAutomation:
                 click_elem.click()
                 time.sleep(t)     ######
                 check = 1
+                return True
             except Exception as e:
                 check = 0
             i += 1
+        return False
 
 
-    def get_element(self, path_to_elem, from_elem=None, group=False, innerTextLower=None):
+    def get_element(self, path_to_elem, from_elem=None, group=False, innerTextLower=None, containsText=None):
         i = 0
         while i<5:
             try:
@@ -133,7 +135,7 @@ class LinkedinAutomation:
                     elem = elems
                     if innerTextLower :
                         for e in elems:
-                            if str(e.get_attribute("innerText")).strip().lower() == innerTextLower:
+                            if str(e.get_attribute("innerText")).strip().lower() == str(innerTextLower).strip().lower():
                                 elem = e
                                 break
                                 
@@ -189,27 +191,26 @@ class LinkedinAutomation:
             # Calculate new scroll height and compare with total scroll height
             new_height = self.driver.execute_script("return document.body.scrollHeight")
             # Wait to load page
-            time.sleep(random.uniform(4, 5))
+            time.sleep(random.uniform(2, 4))
             if new_height == last_height:
-                
+                time.sleep(random.uniform(1.5,2.5))
                 temp = False
                 if not temp:
                     if button_text_to_show_more_results in str(self.get_element('//body')['data'].get_attribute('innerText')).lower():
-                        show_more_results_button = self.get_element(button_path_to_show_more_results, group=True, innerTextLower=button_text_to_show_more_results)
+                        show_more_results_button = self.get_element(button_path_to_show_more_results, group=True, innerTextLower=str(button_text_to_show_more_results).strip().lower())
                         if show_more_results_button["status"]:
                             show_more_results_button = show_more_results_button["data"]
                             self.click_elem(show_more_results_button)
                             temp = True
                             print("yeeeees : 'show_more_results_button' is clecked.......")
                             # Wait to load page
-                            time.sleep(random.uniform(4, 5))
+                            time.sleep(random.uniform(2, 4))
                 if second_check and not temp:
                     break
                     
                 if not temp:
                     second_check = True
-                time.sleep(random.uniform(1.5,2.5))
-
+                
             last_height = new_height
             
     ########################################################################################################
@@ -217,7 +218,6 @@ class LinkedinAutomation:
     ########################################################################################################
     def extract_profiles_from_company_linkedin_profile_url(self, company_linkedin_url):
         company_linkedin_url = str(company_linkedin_url)
-        time.sleep(random.uniform(1,1.5))
         
         try:
             if 'company' in company_linkedin_url :
@@ -226,7 +226,7 @@ class LinkedinAutomation:
                                 
                 if a_personnes_link:
                     self.driver.get(a_personnes_link)
-                    time.sleep(random.uniform(2,4.5))
+                    time.sleep(random.uniform(2,3))
 
                     self.scroll_down(button_path_to_show_more_results='//button', button_text_to_show_more_results='afficher plus de résultats')
 
@@ -366,8 +366,194 @@ class LinkedinAutomation:
             return {"status": False, "data": str(e) }
 
     ########################################################################################################
+    #--------------------- extract company information from the company's linkedin about page --------------
     ########################################################################################################
+    def extract_company_info_from_company_linkedin_profile_url(self, company_linkedin_url):
+        company_linkedin_url = str(company_linkedin_url)
+        try:
+            if 'company' in company_linkedin_url :
+            
+                a_personnes_link = f'https://www.linkedin.com/company/{company_linkedin_url.split("/company/")[1].split("/")[0]}/about/'
+                                
+                self.driver.get(a_personnes_link)
+                time.sleep(random.uniform(2,3))
+                dict = {}
+                size_elem = self.get_element('//a[contains(@class, "org-top-card-summary-info-list__info-item")]/span')
+                if size_elem['status']:
+                    size_elem = size_elem['data']
+                    dict['company_size'] = [size_elem.get_attribute('innerText').replace('\xa0', ' ')]
+                else:
+                    print(size_elem['data'])
+
+                # /html/body/div[6]/div[3]/div/div[2]/div/div[2]/main/div[2]/div/div/div/div[1]/section/dl
+                # class="artdeco-card org-page-details-module__card-spacing artdeco-card org-about-module__margin-bottom"
+                about_infos = self.get_element('//section[contains(@class, "org-page-details-module__card-spacing")]/dl/*', group=True)
+                if about_infos['status']:
+                    about_infos = about_infos['data']
+                    #about_infos = about_infos.get_attribute('innerText')
+                    last_dt = ''
+                    for about_info_elem in about_infos:
+                        if about_info_elem.tag_name == 'dt':
+                            last_dt = about_info_elem.get_attribute('innerText').strip().lower()
+                            dict[last_dt] = []
+                            
+                        if about_info_elem.tag_name == 'dd':
+                            dict[last_dt].append(about_info_elem.get_attribute('innerText').strip().lower().replace('\u202f', ' ').replace('\xa0',' '))
+                else:
+                    print(about_infos['data'])
+
+                about_infos = self.get_element('//section[contains(@class, "org-page-details-module__card-spacing")]/*', group=True)
+                if about_infos['status']:
+                    about_infos = about_infos['data']
+                    for about_info_elem in about_infos:
+                        if about_info_elem.tag_name == 'h2':
+                            last_dt = about_info_elem.get_attribute('innerText').strip().lower()
+                            dict[last_dt] = []
+                            
+                        if about_info_elem.tag_name == 'p':
+                            dict[last_dt].append(about_info_elem.get_attribute('innerText').strip().lower().replace('\u202f', ' ').replace('\xa0',' '))
+                            
+            else:
+                return {"status": False, "data": 'not valid company_linkedin_url'}
+            return {"status": True, "data": dict}
+        except Exception as e:
+            print(f'ERROOOOR: ( {company_linkedin_url} ) {e}')
+            return {"status": False, "data": str(e) }
+    ########################################################################################################
+    #--------------------- extract founder and manager profiles based on keywords --------------------------
+    ########################################################################################################
+    def str_to_json(self, json_string):
+        def clean_invalid_escapes(json_string):
+            # Supprime les séquences d'échappement invalides
+            cleaned_string = re.sub(r'\\U[0-9a-fA-F]{8}', '', json_string)
+            cleaned_string = re.sub(r'\\x[0-9a-fA-F]{2}', '', cleaned_string)
+            return cleaned_string
+        json_string = json_string.replace('"', "'")
+        json_string = json_string.replace("{'", '{"')
+        json_string = json_string.replace("', '", '", "')
+        json_string = json_string.replace("\", '", '", "')
+        json_string = json_string.replace("', \"", '", "')
+        json_string = json_string.replace("': '", '": "')
+        json_string = json_string.replace("': \"", '": "')
+        json_string = json_string.replace("\": '", '": "')
+        json_string = json_string.replace("'}", '"}')
+        json_string = json_string.replace("'", "\'")
+        json_string = json_string.replace("\\'", "\'")
+        json_string = json_string.replace("': ['", '": ["').replace("'], '", '"], "').replace("']}", '"]}').replace("': [", '": [')
+        json_string = clean_invalid_escapes(json_string)
+        json_object = json.loads(json_string)
+        return json_object
+        
+    def extract_founder_and_manager_profiles_based_on_keywords(self, dict):        
+        profiles_column = str(dict['profiles']).strip()
+        company_name = str(dict['name']).strip()
+            
+        try:
+            if company_name : # == "Groupe SYD" :
+                print(f"{'@'*50}  {company_name}  {'@'*50}")
+                    
+                if profiles_column not in ["nan", 'none', 'null', '[]', ""]:
+                    profiles = []
+                    for i, profile in enumerate('}&&||&&'.join(profiles_column[1:-1].split('},')).split('&&||&&')):
+                        # print(f'{i} : {profile}')
+                        
+                        profile = self.str_to_json(profile)
+                        # print(f'{i} : {profile["profile_description"]}')
+                        # print(f'*'*150)
+
+                        profiles.append(profile)
+
+                    #valid_profiles = profiles
+                    valid_profiles = self.get_valid_profiles_from_profiles(profiles)
+
+                    # print(f'='*150)
+                    # for i in valid_profiles:
+                    #     print(f'{i.founder_name} : {i.founder_description}')
+                        
+                else:
+                    return {"status": False, "data": "profiles_column in ['nan', 'none', 'null', '[]', '']" }
+
+            return {"status": True, "data": valid_profiles }
+                
+        except Exception as e:
+            print(f"Errooooor at {company_name}")
+            return {"status": False, "data": e.args[0]}
+
+    def get_valid_profiles_from_profiles(self, profiles, use_OpenAI_api = False):
+        profiles_for_openAI = []
+        valid_profiles = []
+        
+        for profile in profiles:
+            result=self.is_founder_director(profile["profile_description"])
+            if result['response']:
+                print(f'+++ valid profil : {profile["profile_description"]}')
+                valid_profiles.append(profile)
+            else:
+                profiles_for_openAI.append(profile)
     
+        profiles = profiles_for_openAI
+        step = 50
+        founder_profiles = []
+        
+        if use_OpenAI_api :
+            for i in range(0,len(profiles),step):
+                chunk = [ f'{profile["person_name"]}, {profile["profile_description"]}' for profile in profiles[i:i+step]]
+        
+                result = self.foundersOpenAIClassification.predict(chunk)
+                # display(chunk)
+                # print(f'*'*150)
+                # print('Founder profiles:')
+                
+                for name, value in result['content'].items():
+                    try:
+                        if value:
+                            profile = [profile for profile in profiles if profile['person_name'].strip() == name.strip()][0]
+                            founder_profiles.append(profile)
+                            print(f'--- valid profil : {profile["profile_description"]}')
+                            # display(profile)
+                            # print(f'*'*150)
+                    except Exception as e:
+                        print(f'===> error at founder name : {name}')
+                        ExceptionStorage(self.item, f'===> error at founder name : {name}')
+                #print(f'$'*150)
+    
+        final_valid_profiles = valid_profiles + founder_profiles
+        return final_valid_profiles
+
+    def is_founder_director(self, description):
+        keywords = [
+            "general director", "directeur général", "directrice générale",
+            "commercial director", "directeur commercial", "directrice commercial", "DR commercial"
+            " CEO", " PDG", " CFO", "CEO ", "PDG ", "CFO ",
+            "president", "président", "présidente",
+            "founder", "fondateur", "fondatrice",
+            "co-founder", "Co-fondatrice", "Co-fondateur",
+            " CTO", "CTO ",
+            "Chief", "Chef d'entreprise"
+            "HR director", "DRH", "directeur RH", "directrice RH", "DHR",
+            "partner", "associé", "associée",
+            "owner",
+            "Investor", "investeur", "Entrepreneur"
+        ]
+
+        keywords_1 = ["CEO", "PDG", "CFO","CTO"]
+    
+        # Exclude "product owner" explicitly
+        if "product owner" in str(description).lower():
+            return {"response": False}
+    
+        # Check if any keyword is in the description
+        for keyword in keywords:
+            if keyword.lower() in str(description).lower():
+                return {"response": True}
+                
+        # Check if any keyword is in the description without lower()
+        for keyword in keywords_1:
+            if keyword in str(description):
+                return {"response": True}
+                
+        return {"response": False}
+
     ########################################################################################################
     ########################################################################################################
             
